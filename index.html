@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Result Management</title>
+<style>
+  :root {
+    --bg1: #e0e7ff;
+    --bg2: #fce7f3;
+    --card: #ffffff;
+    --ink: #1e293b;
+    --muted: #64748b;
+    --brand: #6366f1;
+    --brand-dark: #4f46e5;
+    --line: #e2e8f0;
+    --pass: #047857;
+    --pass-bg: #d1fae5;
+    --fail: #be123c;
+    --fail-bg: #ffe4e6;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    background: linear-gradient(135deg, var(--bg1), var(--bg2));
+    background-attachment: fixed;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    color: var(--ink);
+    padding: 24px 16px 40px;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 22px; }
+  header h1 { margin: 0 0 6px; font-size: 28px; color: #312e81; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 12px 30px rgba(49, 46, 129, .12);
+  }
+  .card h2 { margin: 0 0 14px; font-size: 18px; color: #312e81; }
+
+  label { display: block; font-size: 13px; margin-bottom: 4px; color: var(--muted); }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--ink);
+    background: #f8fafc;
+  }
+  input:focus { outline: 2px solid var(--brand); background: #fff; }
+  input.invalid { border-color: var(--fail); background: var(--fail-bg); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .subjects { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+  .error { color: var(--fail); font-size: 13px; min-height: 18px; margin: 6px 0 10px; }
+
+  .buttons { display: flex; gap: 10px; }
+  button {
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform .08s, filter .15s;
+  }
+  button:hover { filter: brightness(.95); }
+  button:active { transform: scale(.97); }
+  button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+  .primary { background: var(--brand); color: #fff; flex: 1; }
+  .secondary { background: #e0e7ff; color: #3730a3; }
+  .danger { background: #ffe4e6; color: var(--fail); padding: 6px 10px; font-size: 13px; }
+
+  /* Result card */
+  #result { display: none; margin-top: 4px; }
+  #result.show { display: block; }
+  .result-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .result-head .name { font-size: 18px; font-weight: bold; }
+  .result-head .roll { font-size: 13px; color: var(--muted); }
+  .badge { padding: 6px 14px; border-radius: 999px; font-weight: bold; font-size: 14px; }
+  .badge.pass { background: var(--pass-bg); color: var(--pass); }
+  .badge.fail { background: var(--fail-bg); color: var(--fail); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat { background: #f1f5f9; border-radius: 12px; padding: 10px; text-align: center; }
+  .stat b { display: block; font-size: 20px; color: #312e81; }
+  .stat span { font-size: 12px; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: normal; font-size: 13px; }
+  .table-wrap { overflow-x: auto; }
+  td.fail-mark { color: var(--fail); font-weight: bold; }
+  .empty { color: var(--muted); font-size: 14px; padding: 10px 0; }
+
+  .full { grid-column: 1 / -1; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Student Result Management</h1>
+    <p>Enter a student's marks to get the total, percentage, grade and pass/fail status.</p>
+  </header>
+
+  <div class="grid">
+    <!-- Form -->
+    <section class="card">
+      <h2>Enter marks</h2>
+      <div class="row">
+        <div>
+          <label for="name">Student name</label>
+          <input id="name" type="text" placeholder="e.g. Aarav Sharma" maxlength="40">
+        </div>
+        <div>
+          <label for="roll">Roll number</label>
+          <input id="roll" type="text" placeholder="e.g. 101" maxlength="10">
+        </div>
+      </div>
+
+      <div class="subjects" id="subjects"></div>
+      <p class="error" id="error" role="alert"></p>
+
+      <div class="buttons">
+        <button class="primary" id="calcBtn">Calculate result</button>
+        <button class="secondary" id="resetBtn">Reset</button>
+      </div>
+      <p class="note">Marks are out of 100 per subject. A student passes with at least 40 in every subject.</p>
+    </section>
+
+    <!-- Result -->
+    <section class="card">
+      <h2>Result</h2>
+      <p class="empty" id="placeholder">Your result will appear here after you press "Calculate result".</p>
+      <div id="result">
+        <div class="result-head">
+          <div>
+            <div class="name" id="rName"></div>
+            <div class="roll" id="rRoll"></div>
+          </div>
+          <span class="badge" id="rStatus"></span>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="rTotal"></b><span>Total</span></div>
+          <div class="stat"><b id="rPercent"></b><span>Percentage</span></div>
+          <div class="stat"><b id="rGrade"></b><span>Grade</span></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Subject</th><th>Marks</th><th>Status</th></tr></thead>
+            <tbody id="rBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Saved records -->
+    <section class="card full">
+      <h2>All students</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Roll</th><th>Name</th><th>Total</th><th>%</th><th>Grade</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="records"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="noRecords">No students added yet.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+  const SUBJECTS = ["English", "Mathematics", "Science", "Social Studies", "Computer"];
+  const MAX_MARKS = 100;
+  const PASS_MARKS = 40;
+
+  let students = [];
+  try { students = JSON.parse(localStorage.getItem("students") || "[]"); } catch (e) { students = []; }
+
+  const $ = (id) => document.getElementById(id);
+
+  // Build subject inputs
+  SUBJECTS.forEach((sub, i) => {
+    const div = document.createElement("div");
+    const label = document.createElement("label");
+    label.htmlFor = "sub" + i;
+    label.textContent = sub;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.id = "sub" + i;
+    input.min = 0;
+    input.max = MAX_MARKS;
+    input.placeholder = "0 - " + MAX_MARKS;
+    div.append(label, input);
+    $("subjects").appendChild(div);
+  });
+
+  function getGrade(percent) {
+    if (percent >= 90) return "A+";
+    if (percent >= 80) return "A";
+    if (percent >= 70) return "B";
+    if (percent >= 60) return "C";
+    if (percent >= 50) return "D";
+    if (percent >= 40) return "E";
+    return "F";
+  }
+
+  function save() {
+    try { localStorage.setItem("students", JSON.stringify(students)); } catch (e) {}
+  }
+
+  function showError(msg) { $("error").textContent = msg; }
+
+  function validate() {
+    let ok = true;
+    document.querySelectorAll("input").forEach((i) => i.classList.remove("invalid"));
+    const name = $("name").value.trim();
+    const roll = $("roll").value.trim();
+
+    if (!name) { $("name").classList.add("invalid"); showError("Please enter the student's name."); return null; }
+    if (!roll) { $("roll").classList.add("invalid"); showError("Please enter the roll number."); return null; }
+    if (students.some((s) => s.roll === roll)) {
+      $("roll").classList.add("invalid");
+      showError("Roll number " + roll + " already exists.");
+      return null;
+    }
+
+    const marks = [];
+    for (let i = 0; i < SUBJECTS.length; i++) {
+      const el = $("sub" + i);
+      const raw = el.value.trim();
+      const value = Number(raw);
+      if (raw === "" || isNaN(value) || value < 0 || value > MAX_MARKS) {
+        el.classList.add("invalid");
+        showError("Enter marks between 0 and " + MAX_MARKS + " for " + SUBJECTS[i] + ".");
+        return null;
+      }
+      marks.push(value);
+    }
+    showError("");
+    return { name, roll, marks };
+  }
+
+  function buildRecord(data) {
+    const total = data.marks.reduce((a, b) => a + b, 0);
+    const percent = Math.round((total / (SUBJECTS.length * MAX_MARKS)) * 10000) / 100;
+    const passed = data.marks.every((m) => m >= PASS_MARKS);
+    return {
+      name: data.name,
+      roll: data.roll,
+      marks: data.marks,
+      total,
+      percent,
+      grade: passed ? getGrade(percent) : "F",
+      passed,
+    };
+  }
+
+  function showResult(r) {
+    $("placeholder").style.display = "none";
+    $("result").classList.add("show");
+    $("rName").textContent = r.name;
+    $("rRoll").textContent = "Roll no: " + r.roll;
+    $("rTotal").textContent = r.total + " / " + SUBJECTS.length * MAX_MARKS;
+    $("rPercent").textContent = r.percent + "%";
+    $("rGrade").textContent = r.grade;
+    const badge = $("rStatus");
+    badge.textContent = r.passed ? "Pass" : "Fail";
+    badge.className = "badge " + (r.passed ? "pass" : "fail");
+
+    const body = $("rBody");
+    body.innerHTML = "";
+    SUBJECTS.forEach((sub, i) => {
+      const tr = document.createElement("tr");
+      const ok = r.marks[i] >= PASS_MARKS;
+      [sub, r.marks[i], ok ? "Pass" : "Fail"].forEach((text, idx) => {
+        const td = document.createElement("td");
+        td.textContent = text;
+        if (idx === 2 && !ok) td.className = "fail-mark";
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+  }
+
+  function renderRecords() {
+    const body = $("records");
+    body.innerHTML = "";
+    $("noRecords").style.display = students.length ? "none" : "block";
+    students.forEach((s, index) => {
+      const tr = document.createElement("tr");
+      [s.roll, s.name, s.total, s.percent + "%", s.grade, s.passed ? "Pass" : "Fail"].forEach((text, idx) => {
+        const td = document.createElement("td");
+        td.textContent = text;
+        if (idx === 5) td.className = s.passed ? "" : "fail-mark";
+        tr.appendChild(td);
+      });
+      const actions = document.createElement("td");
+      const view = document.createElement("button");
+      view.className = "secondary danger";
+      view.style.background = "#e0e7ff";
+      view.style.color = "#3730a3";
+      view.style.marginRight = "6px";
+      view.textContent = "View";
+      view.onclick = () => { showResult(s); window.scrollTo({ top: 0, behavior: "smooth" }); };
+      const del = document.createElement("button");
+      del.className = "danger";
+      del.textContent = "Delete";
+      del.onclick = () => { students.splice(index, 1); save(); renderRecords(); };
+      actions.append(view, del);
+      tr.appendChild(actions);
+      body.appendChild(tr);
+    });
+  }
+
+  function resetForm() {
+    document.querySelectorAll("input").forEach((i) => { i.value = ""; i.classList.remove("invalid"); });
+    showError("");
+  }
+
+  $("calcBtn").addEventListener("click", () => {
+    const data = validate();
+    if (!data) return;
+    const record = buildRecord(data);
+    students.push(record);
+    save();
+    showResult(record);
+    renderRecords();
+    resetForm();
+  });
+
+  $("resetBtn").addEventListener("click", resetForm);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") $("calcBtn").click();
+  });
+
+  renderRecords();
+</script>
+</body>
+</html>
